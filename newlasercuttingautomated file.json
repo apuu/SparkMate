@@ -1,0 +1,107 @@
+{
+    "nodes":[
+        {
+            "parameters": {
+                "path":"usb-detected",
+                "responseMode": "onReceived",
+                "responseData": "allData"
+            },
+            "id": "WebhookTrigger",
+            "name": "USB Detection Trigger ",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [200, 300]
+        },
+        {
+            "parameters":{
+             "values":{
+                "strring":[
+                    {
+                        "name":"jobId",
+                        "value":"A123"
+                    },
+                    {
+                        "name":"filename",
+                        "value":"D:/LaserJobs/JobA123.dxf"
+                    },
+                    {
+                        "name":"material",
+                        "value":"Stainless Steel 3mm"
+                    },
+                    {
+                        "name":"opearatorPhone",
+                        "values":"whatsapp:+912345679890"
+                    }
+                ]
+             }   
+            },
+            "id": "SetJobDetails",
+            "name": "Set Job Details (give example)",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [400, 300]
+        },
+        {
+            "paramters":{
+                "sourcePath": "{{$json[\"filename\"]}}",
+                "destinationPath": "={{$json[\"body\"][\"drive\"]}}/jobs/{{$json.jobId}}.dxf",
+                "options": {
+                    "overwrite": true
+                }
+            },
+            "id": "CopyFileToUSB",
+            "name": "Copy File to USB",
+            "type": "n8n-nodes-base.moveBinaryFile",
+            "typeVersion": 1,
+            "position": [600, 300]
+        },
+        {
+            "parameters": {
+                "text": "Job ID: {{$json[\"jobId\"]}}\nFilename: {{$json[\"filename\"]}}\nMaterial: {{$json[\"material\"]}}\nOperator Phone: {{$json[\"opearatorPhone\"]}}",
+                "to": "={{$json[\"body\"][\"drive\"]}}/jobs/{{$json.jobId}}.txt"
+            },
+            "id": "CreateJobDetailsFile",
+            "name": "Create Job Details File",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [800, 300]
+        },
+        or ""
+        {
+            "paramters": {
+                "url":"https://your-whatsapp-api.com/send", or "url":"https://your-whatsapp-provider.com/send",
+                "method": "POST",
+                "bodyparameters": {
+                    "parameters": [
+                        {
+                            "name": "to",
+                            "value": "={{$json[\"opearatorPhone\"]}}"
+                        },
+                        {
+                            "name":"message",
+                            "value":" job {{#json.jobID}} ({{$json.material}}) has been synced to the usb drive .please insert and begin cutting ."
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "SendWhatsAppNotification",
+            "name": "Send WhatsApp Notification" or "Notify Operator via WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion":1,
+            "position":[800,300]",
+            
+        }"""
+    ],
+    "connections":{
+    "USB Detection Trigger":{ 
+    "main":[["set JOb details (example)"]]
+        },
+        "set job Details (example)":{
+            "main":[["Copy File to USB"]]
+        },
+        "Copy File to USB":{
+            "main":[["Notify Operator via WhatsApp "]]
+        }
+    }    
+}

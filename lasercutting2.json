@@ -1,0 +1,121 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "path":"usb-detected",
+                "responseMode": "onReceived",
+                "responseData": "allData"
+            },
+            "id": "WebhookTrigger",
+            "name": "USB Detection Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [200, 200]
+        },
+        {
+            "parameters": { 
+                "filepath": "C:/LaserJobs/JobTracker.xlsx",
+                "sheetName": "JobDetails"
+
+        },
+            "id": "ReadExcelFile",
+            "name": "Read Excel Sheet",
+            "type": "n8n-nodes-base.spreadsheetfile",
+            "typeVersion": 1,
+            "position": [400, 200]
+
+
+        },
+        {
+            "parameters":{
+                "functionCode": "return items.filter(item => item.json.Status === 'Pending').slice(0, 1);"
+            },
+            "id": "FilternextJobs",
+            "name": "get first pending job ",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [600, 200]
+        },
+        {
+            "parameters":{
+                "sourcePath": "={{'D://LaserJobs/' + $json[\"filename\"]}} ",
+                "destinationPath": "={{$node[\"USB Detection Trigger\"].json[\"body\"][\"drive\"] + '/jobs/'+ $json[\"File Name\"]}}" ,
+                 "overwrite" : true
+            },
+            "id": "CopyFileToUSB",
+            "name": "Copy File to USB",
+            "type": "n8n-nodes-base.moveBinaryData",
+            "typeVersion": 1,
+            "position": [800, 200]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "key":"Job ID",
+                "value": "={{$json[\"Job ID\"]}}",
+                "options":{
+                    "sheetName": "Jobs"
+                },
+                "updateValues": {
+                    "String":[
+                        {
+                            "name": "Status",
+                            "value": "Synced to USB"
+
+                        }
+                    ]
+                }
+            },
+            "id": "UpdateStatus",
+            "name": "Mark Job as Synced",
+            "type": "n8n-nodes-base.spreadsheetfile",
+            "typeVersion": 1,
+            "position": [1000, 200]
+
+        },
+        {
+            "parameters":{
+                "url": "https://api.whatsapp.com/send?phone={{$json[\"Operator Phone\"]}}&text=Job%20ID:%20{{$json[\"Job ID\"]}}%0AFilename:%20{{$json[\"File Name\"]}}%0AMaterial:%20{{$json[\"Material\"]}}%0AStatus:%20Synced%20to%20USB",
+                "method": "POST",
+                "bodyParametersUI": {
+                    "parameter" : [
+                        {
+                            "name": "to",
+                            "value": "={{$json[\"Opearator Phone\"]}}"
+                        },
+                        {
+                            "name": "message",
+                            "value": " Job ID: {{$json[\"Job ID\"]}}\nFilename: {{$json[\"File Name\"]}}\nMaterial: {{$json[\"Material\"]}}\nStatus: Synced to USB" 
+
+                        }
+                    ]
+                }
+
+            },
+            "id" : "SendNotification",
+            "name": "Send whatsapp Notification",
+            "type": "n8n-nodes-base.httpRequests",
+            "typeversion": 1,
+            "position":[1200,200]
+        }
+    ],
+    "connections": {
+        "USB Detection Trigger":{
+            "main":[["Read Excel Sheet"]]
+        },
+        "Read Excel Sheet":{
+            "main":[["Get First Pending Job"]]
+        },
+        "Get First Pending Job":{
+            "main":[["Copy File to USB"]]
+        },
+        "Copy File to USB":{
+            "main":[["Mark Job as Synced"]]
+        },
+        "Mark Job as Synced":{
+            "main":[["Send WhatsApp Notification"]]
+        }
+
+    }
+    
+}

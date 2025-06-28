@@ -1,0 +1,101 @@
+{
+ "nodes":[
+    {
+      "parameters":{
+        "path": "job-complete",
+        "responseMode": "onReceived"
+      },
+        "id": "WebhookTrigger",
+        "name": "Job Completion Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [200, 200]
+    },
+    {
+      "parameters":{
+        "filepath": "C:/LaserJobs/JobTracker.xlsx",
+        "sheetName": "Job"
+      },
+        "id":"ReadJobsSheet",
+        "name": "Read Job Tracker",
+        "type": "n8n-nodes-base.spreadsheetFile",
+        "typeVersion": 1,
+        "position": [400, 200]
+    },
+    {
+      "parameters":{
+        "functionCode": "const jobId = $node[\"Job Complete Trigger\"].json[\"body\"][\"jobID\"];\nreturn items.filter(item => item.json[\"Job ID\"] === jobId);"
+      },
+        "id":"FindMatchingJob",
+        "name": "Find Matching Job",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [600, 200]  
+    },
+    {
+      "parameters":{
+        "functionCode": "const now = new Date();\nconst pad = (n) => n.toString().padStart(2,'0');\nconst dateStr = '${pad(now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}';\nconst serial = Math.floor(100 + Math.random() * 900);\nitems[0].json.SMR = 'SMR-${dateStr}-${serial}';\nitems[0].json.Timestamp = now.toISOString();\nreturn items;"
+
+      },
+        "id": "GenerateSMR",
+        "name": "Generate SMR",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [800, 200]
+  
+    },
+    {
+      "parameters":{
+        "filepath": "C:/LaserJobs/JobTracker.xlsx",
+        "sheetName": "CompletedJobs",
+        "options":{}
+      },
+        "id": "AppendToCompletedJobs",
+        "name":"Append to Completed Jobs",
+        "type": "n8n-nodes-base.spreadsheetFile",
+        "typeVersion": 1,
+        "position": [1000, 200]
+    },
+    {
+      "parameters":{
+        "operation":"update",
+        "key": "Job Id",
+        "value": "={{$json[\"Job ID\"]}}",
+        "options":{
+          "sheetName": "Jobs"
+        },
+        "updateValues": {
+          "string": [
+            {
+              "name": "Status",
+              "value": "Completed"
+            }
+          ]
+        }
+      },
+      "id": "UpdateJobStatus",
+      "name": "Update Job Status",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [1200, 200]
+    }
+ ],
+ "connections":{
+  "job Complete Trigger":{
+    "main": [["ReadJobsSheet"]]
+  },
+  "ReadJobsSheet":{
+    "main": [["FindMatchingJob"]]
+  },
+  "FindMatchingJob":{
+    "main": [["GenerateSMR"]]
+  },
+  "GenerateSMR":{
+    "main": [["AppendToCompletedJobs"]]
+  },
+  "AppendToCompletedJobs":{
+    "main": [["UpdateJobStatus"]]
+  }
+ }
+
+} 

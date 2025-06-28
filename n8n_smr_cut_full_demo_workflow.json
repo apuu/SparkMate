@@ -1,0 +1,174 @@
+
+{
+  "name": "SMR Laser Cutting - Full Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "sheetId": "DummySheetID",
+        "range": "NewJobs!A:C",
+        "valueRenderMode": "FORMATTED_VALUE",
+        "dateTimeRenderOption": "FORMATTED_STRING"
+      },
+      "id": "2",
+      "name": "Read NewJobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [300, 300],
+      "credentials": {
+        "googleApi": "DummyDrive"
+      }
+    },
+    {
+      "parameters": {
+        "sheetId": "DummySheetID",
+        "range": "SMRLog!A:A",
+        "valueRenderMode": "FORMATTED_VALUE"
+      },
+      "id": "3",
+      "name": "Check SMRLog",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [300, 500],
+      "credentials": {
+        "googleApi": "DummyDrive"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"SMR No\"]}}",
+              "operation": "notIn",
+              "value2": "={{$items(\"Check SMRLog\")[0].json[\"values\"].map(v => v[0])}}"
+            }
+          ]
+        }
+      },
+      "id": "4",
+      "name": "Check Duplicate SMR",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://reqres.in/api/laser-cut",
+        "method": "POST",
+        "sendBody": true,
+        "jsonParameters": true,
+        "bodyParametersJson": "{\n  \"smr\": \"={{$json[\\\"SMR No\\\"]}}\",\n  \"sheet\": \"={{$json[\\\"Sheet No\\\"]}}\",\n  \"operator\": \"={{$json[\\\"Operator\\\"]}}\",\n  \"machine\": \"Marq Laser Cutting Machine\"\n}"
+      },
+      "id": "5",
+      "name": "Send to Laser API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "documentTitle": "SMR_Cut_Report",
+        "content": "<h3>Laser Cutting Report</h3>\n<p><b>SMR No:</b> {{$json[\"SMR No\"]}}</p>\n<p><b>Sheet No:</b> {{$json[\"Sheet No\"]}}</p>\n<p><b>Operator:</b> {{$json[\"Operator\"]}}</p>\n<p><b>Machine:</b> Marq Laser Cutting Machine</p>\n<p><b>Time:</b> {{$now}}</p>"
+      },
+      "id": "6",
+      "name": "Generate PDF",
+      "type": "n8n-nodes-base.htmlPdf",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "mode": "upload",
+        "binaryPropertyName": "data",
+        "parents": [],
+        "name": "SMR Reports"
+      },
+      "id": "7",
+      "name": "Upload to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [1100, 200],
+      "credentials": {
+        "googleDriveOAuth2Api": "DummyDrive"
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@dummy.com",
+        "toEmail": "supervisor@dummy.com",
+        "subject": "SMR Cut Completed",
+        "text": "SMR {{$json[\"SMR No\"]}} has been successfully cut by {{$json[\"Operator\"]}}."
+      },
+      "id": "8",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1300, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { message: `SMR ${$json[\"SMR No\"]} cut complete` } }];"
+      },
+      "id": "9",
+      "name": "Slack Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "sheetId": "DummySheetID",
+        "range": "SMRLog!A:A",
+        "options": {},
+        "valueInputMode": "RAW",
+        "dataMode": "raw",
+        "rawData": [
+          ["={{$json[\"SMR No\"]}}"]
+        ]
+      },
+      "id": "10",
+      "name": "Update SMRLog",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [1100, 300],
+      "credentials": {
+        "googleApi": "DummyDrive"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [["Read NewJobs"]]
+    },
+    "Read NewJobs": {
+      "main": [["Check SMRLog"], ["Check Duplicate SMR"]]
+    },
+    "Check SMRLog": {
+      "main": [["Check Duplicate SMR"]]
+    },
+    "Check Duplicate SMR": {
+      "main": [["Send to Laser API"], null]
+    },
+    "Send to Laser API": {
+      "main": [["Generate PDF"]]
+    },
+    "Generate PDF": {
+      "main": [["Upload to Drive"]]
+    },
+    "Upload to Drive": {
+      "main": [["Send Email"], ["Slack Message"], ["Update SMRLog"]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "full-demo-1"
+}
+
